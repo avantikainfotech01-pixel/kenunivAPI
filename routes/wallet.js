@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
-const User = require("../models/User");
+const User = require("../models/user");
 const QRCode = require("../models/qrcode");
 const WalletHistory = require("../models/wallet_history");
 
