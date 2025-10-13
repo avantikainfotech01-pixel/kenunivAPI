@@ -12,7 +12,15 @@ const cors = require("cors");
 dotenv.config();
 const app = express();
 
-app.use(cors());
+// ✅ Allow only your frontend domain
+app.use(cors({
+  origin: [
+    "https://adminpanel.kenuniv.com",  // your Flutter web subdomain
+    "http://localhost:5000"     // optional for local testing
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
