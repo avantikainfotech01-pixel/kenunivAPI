@@ -16,7 +16,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://adminpanel.kenuniv.com",  // your Flutter web subdomain
-    "http://localhost:5000"     // optional for local testing
+    "https://adminpanel.kenuniv.com"     // optional for local testing
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
