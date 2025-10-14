@@ -14,7 +14,7 @@ const app = express();
 
 // ✅ Allow only your frontend domain
 app.use(cors({
-  origin: "*",
+  origin: '*',
   // origin: ["*"
   //   // "http://adminpanel.kenuniv.com",  // your Flutter web subdomain
   //   // "https://adminpanel.kenuniv.com",     // optional for local testing
