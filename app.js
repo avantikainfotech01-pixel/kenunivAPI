@@ -14,12 +14,11 @@ const app = express();
 
 // ✅ Allow only your frontend domain
 app.use(cors({
-  origin: '*',
-  // origin: ["*"
-  //   // "http://adminpanel.kenuniv.com",  // your Flutter web subdomain
-  //   // "https://adminpanel.kenuniv.com",     // optional for local testing
-  //   // "http://localhost:53033"
-  // ],
+  origin: [
+    "http://adminpanel.kenuniv.com",  // your Flutter web subdomain
+    "https://adminpanel.kenuniv.com",     // optional for local testing
+    "http://127.0.0.1:5500"
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
