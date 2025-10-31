@@ -10,44 +10,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout the code
-      - name: Checkout code
+      # 1️⃣ Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node.js
+      # 2️⃣ Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      # 3️⃣ Install dependencies & build (if you have a build step)
+      # 3️⃣ Install dependencies and build (if applicable)
       - name: Install dependencies and build
         run: |
           npm ci
           npm run build --if-present
 
-      # 4️⃣ Create deployment archive (ignores git, node_modules, logs, etc.)
-      - name: Create archive
-        run: |
-          tar --warning=no-file-changed \
-              --exclude='.git' \
-              --exclude='node_modules' \
-              --exclude='.github' \
-              --exclude='*.log' \
-              -czf app.tar.gz .
-
-      # 5️⃣ Copy archive to VPS
-      - name: Copy files to VPS
+      # 4️⃣ Copy files directly to VPS
+      - name: Copy project files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
-          source: "app.tar.gz"
-          target: "~/app.tar.gz"
+          source: "."
+          target: "~/app"
+          rm: true               # remove old files on the server before copying
+          overwrite: true        # ensure updated files overwrite old ones
+          exclude: |
+            .git
+            .github
+            node_modules
+            *.log
 
-      # 6️⃣ Deploy and restart PM2 process on VPS
-      - name: Deploy on VPS
+      # 5️⃣ Install dependencies and restart PM2 app on VPS
+      - name: Deploy and restart PM2 process
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -55,13 +52,7 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
             set -e
-
-            echo "🔹 Cleaning and unpacking app..."
-            cd ~
-            rm -rf app || true
-            mkdir app
-            tar -xzf app.tar.gz -C app
-            cd app
+            cd ~/app
 
             echo "🔹 Installing production dependencies..."
             npm ci --omit=dev
