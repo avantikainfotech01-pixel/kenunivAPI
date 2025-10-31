@@ -1,0 +1,61 @@
+name: Build and Deploy to VPS
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.5'
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build --if-present
+
+      - name: Create archive
+        run: tar -czf app.tar.gz .
+
+      - name: Copy to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          source: "app.tar.gz"
+          target: "~/app.tar.gz"
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            set -e
+            cd ~
+            rm -rf app || true
+            mkdir app
+            tar -xzf app.tar.gz -C app
+            cd app
+
+            npm ci --omit=dev
+
+            # Restart PM2 process
+            if pm2 describe kenuniv-api > /dev/null; then
+              pm2 restart kenuniv-api
+            else
+              pm2 start app.js --name kenuniv-api
+            fi
+
+            pm2 save
