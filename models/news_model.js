@@ -10,9 +10,14 @@ const newsSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    image: {
+    mediaUrl: {
       type: String,
-      required: true,
+      required: true, // ✅ Replaces "image"
+    },
+    mediaType: {
+      type: String,
+      enum: ["image", "video"],
+      default: "image",
     },
     createdAt: {
       type: Date,

@@ -38,25 +38,53 @@ function isAdmin(req, res, next) {
 
 // --- USER MASTER (For Admin Panel Only) ---
 // Add or Update User (Admin only)
+// --- USER MASTER (For Admin Panel Only) ---
 router.post("/user-master", async (req, res) => {
   try {
     const { id, name, mobile, address, password, active, role, permissions } =
-      req.body; // ✅ use permissions
+      req.body;
+
+    // ✅ Validate required fields
+    if (!name || !mobile) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Name and mobile are required" });
+    }
+
     let user;
 
     if (id) {
-      user = await User.findByIdAndUpdate(
-        id,
-        { name, mobile, address, password, active, role, permissions },
-        { new: true }
-      );
-      if (!user) {
+      // 🔄 Update existing user
+      const existingUser = await User.findById(id);
+      if (!existingUser) {
         return res
           .status(404)
           .json({ success: false, message: "User not found" });
       }
+
+      const updateData = {
+        name,
+        mobile,
+        address,
+        active,
+        role,
+        permissions: permissions || existingUser.permissions,
+      };
+
+      // ✅ Only re-hash password if changed
+      if (password && password.trim() !== "") {
+        updateData.password = await bcrypt.hash(password, 10);
+      }
+
+      user = await User.findByIdAndUpdate(id, updateData, { new: true });
+
+      res.json({
+        success: true,
+        message: "User updated successfully",
+        user,
+      });
     } else {
-      // Check for existing user with same mobile
+      // 🆕 Create new user
       const existingUser = await User.findOne({ mobile });
       if (existingUser) {
         return res.status(400).json({
@@ -72,23 +100,28 @@ router.post("/user-master", async (req, res) => {
         mobile,
         address,
         password: hash,
-        active,
-        role,
+        active: active ?? true,
+        role: role || "subadmin", // default to sub-admin if not provided
         permissions: permissions || {},
       });
-      await user.save();
-    }
 
-    res.json({ success: true, user });
-  } catch (err) {
-    if (err.name === "ValidationError") {
-      res.status(400).json({ success: false, message: err.message });
-    } else {
-      res.status(500).json({ success: false, message: err.message });
+      await user.save();
+
+      res.json({
+        success: true,
+        message: "User created successfully",
+        user,
+      });
     }
+  } catch (err) {
+    console.error("User Master Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: err.message,
+    });
   }
 });
-
 router.post("/user-master-login", async (req, res) => {
   const { mobile, password } = req.body;
   const user = await User.findOne({ mobile });
@@ -389,26 +422,45 @@ router.get("/print-qr/:serial", async (req, res) => {
 });
 // --- NEWS ROUTES ---
 // Upload news with image, title, description
+// --- NEWS ROUTES ---
+// Upload news with image or video, title, description
 router.post("/news", newsUpload.any(), async (req, res) => {
   try {
-    console.log("Files received:", req.files); // ✅ log all files
+    console.log("Files received:", req.files);
     console.log("Body received:", req.body);
 
     if (!req.files || req.files.length === 0) {
       return res
         .status(400)
-        .json({ success: false, message: "Image is required" });
+        .json({ success: false, message: "Media file is required" });
     }
 
-    const { title, description } = req.body;
-    const file = req.files[0]; // ✅ first uploaded file
+    const { title, description, mediaType } = req.body;
+    const file = req.files[0]; // first uploaded file
+    const ext = path.extname(file.originalname).toLowerCase();
 
-    const imagePath = `/uploads/news/${file.filename}`;
-    const news = new News({ image: imagePath, title, description });
+    // Detect media type if not explicitly sent
+    const detectedType = mediaType
+      ? mediaType
+      : ext === ".mp4" || ext === ".mov" || ext === ".avi"
+      ? "video"
+      : "image";
+
+    // Save uploaded file path
+    const mediaPath = `/uploads/news/${file.filename}`;
+
+    const news = new News({
+      title,
+      description,
+      mediaUrl: mediaPath,
+      mediaType: detectedType,
+    });
+
     await news.save();
 
     res.json({ success: true, news });
   } catch (err) {
+    console.error("Upload error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -423,26 +475,89 @@ router.get("/news", async (req, res) => {
   }
 });
 
-// Delete a news by id
+// ✅ Delete a news by ID (deletes associated image file too)
 router.delete("/news/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const newsItem = await News.findById(id);
+
     if (!newsItem) {
       return res
         .status(404)
         .json({ success: false, message: "News not found" });
     }
 
-    // Delete image file
-    const imagePath = path.join(__dirname, "..", newsItem.image);
-    if (fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
+    // ✅ Use correct field name 'image' instead of 'mediaUrl'
+    if (newsItem.image) {
+      const filePath = path.join(__dirname, "..", newsItem.image);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
 
     await News.findByIdAndDelete(id);
 
     res.json({ success: true, message: "News deleted successfully" });
+  } catch (err) {
+    console.error("Delete error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- ADD REDEEM HISTORY (When user redeems product via QR code) ---
+router.post("/redeem-history", async (req, res) => {
+  try {
+    const { userId, schemeId, pointsUsed, qrSerial } = req.body;
+
+    if (!userId || !schemeId || !pointsUsed || !qrSerial) {
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
+    }
+
+    const redeem = new RedeemHistory({
+      userId,
+      schemeId,
+      pointsUsed,
+      qrSerial,
+    });
+
+    await redeem.save();
+
+    res.json({
+      success: true,
+      message: "Redeem history recorded successfully",
+      redeem,
+    });
+  } catch (err) {
+    console.error("Redeem Save Error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- FETCH REDEEM HISTORY (For Admin Panel) ---
+router.get("/redeem-history", async (req, res) => {
+  try {
+    const history = await RedeemHistory.find()
+      .populate("userId", "name mobile")
+      .populate("schemeId", "schemeName productName points")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: history });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- FETCH REDEEM HISTORY (For Mobile User) ---
+router.get("/redeem-history/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const history = await RedeemHistory.find({ userId })
+      .populate("schemeId", "schemeName productName points")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: history });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -13,21 +13,23 @@ dotenv.config();
 const app = express();
 
 // ✅ Allow only your frontend domain
-app.use(cors({
-  origin: [
-    "http://adminpanel.kenuniv.com",  // your Flutter web subdomain
-    "https://adminpanel.kenuniv.com",     // optional for local testing
-    "http://127.0.0.1:5500"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.error("MongoDB Error:", err));
+  .catch((err) => console.error("MongoDB Error:", err));
 
 app.get("/", (req, res) => {
   res.send("Welcome to the QR Code API");
