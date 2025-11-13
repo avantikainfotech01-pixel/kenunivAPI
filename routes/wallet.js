@@ -13,11 +13,12 @@ const RedeemHistory = require("../models/redeem_model");
 router.post("/redeem", async (req, res) => {
   try {
     const { userId, schemeId, qrSerial } = req.body;
-
+    console.log("Redeem Request Body:", req.body); // 👈 ADD THIS
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(schemeId)
     ) {
+      console.log("Invalid IDs received:", { userId, schemeId });
       return res.status(400).json({ success: false, message: "Invalid IDs" });
     }
 
@@ -30,8 +31,19 @@ router.post("/redeem", async (req, res) => {
         .json({ success: false, message: "User or Scheme not found" });
     }
 
-    // Check if user has enough points
-    if ((user.walletBalance || 0) < scheme.points) {
+    // ✅ Recalculate total wallet points from WalletHistory to ensure accuracy
+    const allHistory = await WalletHistory.find({ userId });
+    let totalPoints = 0;
+    for (const h of allHistory) {
+      totalPoints += h.type === "credit" ? h.points : -h.points;
+    }
+
+    // Update user's walletBalance for consistency
+    user.walletBalance = totalPoints;
+    await user.save();
+
+    // Check again if user has enough points
+    if (user.walletBalance < scheme.points) {
       return res
         .status(400)
         .json({ success: false, message: "Insufficient points to redeem" });
