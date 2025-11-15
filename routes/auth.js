@@ -44,7 +44,7 @@ router.post("/verify-otp", async (req, res) => {
   res.json({ message: "OTP verified", token, user });
 });
 router.post("/register", async (req, res) => {
-  const { name, mobile, email, password, address, state, city, role } =
+  const { name, mobile, password, address, state, city, role } =
     req.body;
 
   if (!mobile) {
@@ -56,16 +56,11 @@ router.post("/register", async (req, res) => {
     return res.status(400).json({ error: "Mobile already registered" });
   }
 
-  const existingEmail = await User.findOne({ email });
-  if (existingEmail) {
-    return res.status(400).json({ error: "Email already registered" });
-  }
 
   const hash = await bcrypt.hash(password, 10);
   const user = await User.create({
     name,
     mobile,
-    email,
     password: hash,
     address,
     state,
