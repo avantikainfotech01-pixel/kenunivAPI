@@ -28,7 +28,10 @@ const newsStorage = multer.diskStorage({
   },
 });
 
-const newsUpload = multer({ storage: newsStorage });
+const newsUpload = multer({
+  storage: newsStorage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50 MB
+});
 
 // Middleware to ensure only admins can access
 function isAdmin(req, res, next) {
