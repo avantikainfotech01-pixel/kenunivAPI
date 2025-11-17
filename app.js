@@ -13,16 +13,13 @@ dotenv.config();
 const app = express();
 
 // ✅ Allow only your frontend domain
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH","OPTIONS"],
-    credentials: true,
-  })
-);
-app.options("*", (req, res) => {
-  res.sendStatus(200);
-});
+app.use(cors({
+  origin: "*",
+  methods: ["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
