@@ -5,6 +5,7 @@ const User = require("../models/user");
 const bcrypt = require("bcryptjs");
 const verifyToken = require("../middleware/auth");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 require("dotenv").config();
 
 function generateOTP() {
@@ -103,23 +104,25 @@ router.post("/update-address", async (req, res) => {
   try {
     const { userId, name, addressLine, city, state, pincode } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(userId))
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ success: false, message: "Invalid userId" });
-
+    }
+    console.log("update address called with:", req.body)
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    user.name = name || user.name;
-    user.address = addressLine || user.address;
-    user.city = city || user.city;
-    user.state = state || user.state;
-    user.pincode = pincode || user.pincode;
+    user.name = name;
+    user.address = addressLine;
+    user.city = city;
+    user.state = state;
+    user.pincode = pincode;
+
     await user.save();
 
-    res.json({ success: true, message: "Address updated", data: user });
-  } catch (err) {
-    console.error("Update address error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.json({ success: true, message: "Address updated", user });
+  } catch (e) {
+    console.error("Update address error:", e);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
