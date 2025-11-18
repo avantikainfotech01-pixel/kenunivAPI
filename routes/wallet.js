@@ -10,15 +10,16 @@ const RedeemHistory = require("../models/redeem_model");
 // ------------------------
 // POST /wallet/redeem
 // ------------------------
+// POST /wallet/redeem
 router.post("/redeem", async (req, res) => {
   try {
-    const { userId, schemeId, qrSerial } = req.body;
-    console.log("Redeem Request Body:", req.body); // 👈 ADD THIS
+    const { userId, schemeId, qrSerial, address, location } = req.body;
+    console.log("Redeem Request Body:", req.body);
+
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(schemeId)
     ) {
-      console.log("Invalid IDs received:", { userId, schemeId });
       return res.status(400).json({ success: false, message: "Invalid IDs" });
     }
 
@@ -31,57 +32,63 @@ router.post("/redeem", async (req, res) => {
         .json({ success: false, message: "User or Scheme not found" });
     }
 
-    // ✅ Recalculate total wallet points from WalletHistory to ensure accuracy
+    // Recalculate total points from WalletHistory
     const allHistory = await WalletHistory.find({ userId });
     let totalPoints = 0;
     for (const h of allHistory) {
       totalPoints += h.type === "credit" ? h.points : -h.points;
     }
-
-    // Update user's walletBalance for consistency
     user.walletBalance = totalPoints;
     await user.save();
 
-    // Check again if user has enough points
     if (user.walletBalance < scheme.points) {
       return res
         .status(400)
         .json({ success: false, message: "Insufficient points to redeem" });
     }
 
-    // Deduct points from wallet
+    // Deduct points (create wallet debit entry after saving redeem record to ensure consistency)
     user.walletBalance -= scheme.points;
     await user.save();
 
-    // Add redeem entry
+    // create redeem history entry (status pending)
     const redeem = new RedeemHistory({
       userId,
       schemeId,
       pointsUsed: scheme.points,
-      qrSerial,
-      status: "approved",
+      qrSerial: qrSerial || null,
+      address: address || (user.address ? {
+        name: user.name || '',
+        addressLine: user.address || '',
+        city: user.city || '',
+        state: user.state || '',
+        pincode: user.pincode || '',
+      } : null),
+      location: location || null,
+      status: "pending",
     });
+
     await redeem.save();
 
-    // Add wallet debit entry
+    // add wallet history debit entry
     const history = new WalletHistory({
       userId,
       points: scheme.points,
       type: "debit",
       balanceAfter: user.walletBalance,
-      description: `Redeemed ${scheme.schemeName}`,
+      description: `Redeemed ${scheme.schemeName || scheme.productName}`,
       date: new Date(),
     });
     await history.save();
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Redemption successful",
+      message: "Redemption request submitted",
       data: { balance: user.walletBalance, redeem },
     });
   } catch (err) {
     console.error("Redeem Error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -91,7 +98,7 @@ router.post("/redeem", async (req, res) => {
 router.get("/redeem-history", async (req, res) => {
   try {
     const history = await RedeemHistory.find()
-      .populate("userId", "name mobile")
+      .populate("userId", "name mobile address city state pincode")
       .populate("schemeId", "schemeName productName points")
       .sort({ createdAt: -1 });
 
