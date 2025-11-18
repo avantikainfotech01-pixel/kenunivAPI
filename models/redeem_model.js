@@ -19,14 +19,27 @@ const redeemHistorySchema = new mongoose.Schema(
     },
     qrSerial: {
       type: String,
-      required: true,
+      default: null,
+    },
+    // store address snapshot at time of redeem
+    address: {
+      name: String,
+      addressLine: String,
+      city: String,
+      state: String,
+      pincode: String,
+    },
+    // optional GPS coords
+    location: {
+      lat: Number,
+      lng: Number,
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
-      default: "approved",
+      enum: ["pending", "approved", "rejected", "dispatched", "completed"],
+      default: "pending",
     },
-    date: {
+    createdAt: {
       type: Date,
       default: Date.now,
     },
