@@ -40,8 +40,8 @@ router.post("/redeem", async (req, res) => {
     const productPoints = scheme.points;
 
     // --- Calculate Wallet Balance ---
-    const walletHistory = await Wallet.find({ userId });
-
+const walletHistory = await WalletHistory.find({ userId });
+    
     let walletBalance = walletHistory.reduce((sum, tx) => {
       return tx.type === "credit" ? sum + tx.points : sum - tx.points;
     }, 0);
