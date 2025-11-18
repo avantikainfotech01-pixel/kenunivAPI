@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   address: String,
   state: String,
   city: String,
+  pincode: String,   
   role: { type: String, enum: ["admin", "user"], default: "user" },
   createdAt: { type: Date, default: Date.now },
 });
