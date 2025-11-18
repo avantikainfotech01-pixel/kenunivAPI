@@ -104,10 +104,6 @@ router.post("/redeem", async (req, res) => {
     });
   }
 });
-"Redeem Error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-});
 
 // ------------------------
 // GET /wallet/redeem-history (Admin)
