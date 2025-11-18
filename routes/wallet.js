@@ -42,9 +42,9 @@ router.post("/redeem", async (req, res) => {
     // --- Calculate Wallet Balance ---
 const walletHistory = await WalletHistory.find({ userId });
     
-    let walletBalance = walletHistory.reduce((sum, tx) => {
-      return tx.type === "credit" ? sum + tx.points : sum - tx.points;
-    }, 0);
+let walletBalance = walletHistory.reduce((sum, tx) => {
+  return tx.type === "credit" ? sum + tx.points : sum - tx.points;
+}, 0);
 
     if (walletBalance < productPoints) {
       return res.status(400).json({
