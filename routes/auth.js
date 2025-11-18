@@ -99,5 +99,28 @@ router.post("/login", async (req, res) => {
   );
   res.json({ message: "Login successful", token, user });
 });
+router.post("/update-address", async (req, res) => {
+  try {
+    const { userId, name, addressLine, city, state, pincode } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId))
+      return res.status(400).json({ success: false, message: "Invalid userId" });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    user.name = name || user.name;
+    user.address = addressLine || user.address;
+    user.city = city || user.city;
+    user.state = state || user.state;
+    user.pincode = pincode || user.pincode;
+    await user.save();
+
+    res.json({ success: true, message: "Address updated", data: user });
+  } catch (err) {
+    console.error("Update address error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 
 module.exports = router;
