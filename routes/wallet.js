@@ -148,6 +148,32 @@ router.get("/redeem-history/:userId", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+// ------------------------
+// PATCH /wallet/redeem-history/:id/approve  → Approve a redemption
+// ------------------------
+router.patch("/redeem-history/:id/approve", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid redeem ID" });
+    }
+
+    const redeemEntry = await RedeemHistory.findById(id);
+    if (!redeemEntry) {
+      return res.status(404).json({ success: false, message: "Redeem entry not found" });
+    }
+
+    // Update status to approved
+    redeemEntry.status = "approved";
+    await redeemEntry.save();
+
+    res.json({ success: true, message: "Redemption approved", redeem: redeemEntry });
+  } catch (err) {
+    console.error("Approve redeem error:", err);
+    res.status(500).json({ success: false, message: "Server error", error: err.message });
+  }
+});
 
 // ------------------------
 // POST /wallet/scan
