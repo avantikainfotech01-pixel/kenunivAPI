@@ -388,5 +388,46 @@ router.get("/all-history", async (req, res) => {
     });
   }
 });
+router.get("/admin/dashboard-stats", async (req, res) => {
+  try {
+    // Total users
+    const totalUsers = await User.countDocuments();
+
+    // Remaining stock
+    const stockData = await Stock.aggregate([
+      { $group: { _id: null, totalStock: { $sum: "$quantity" } } }
+    ]);
+    const remainingStock = stockData[0]?.totalStock || 0;
+
+    // Wallet total amount
+    const userWallets = await User.aggregate([
+      { $group: { _id: null, totalWallet: { $sum: "$walletBalance" } } }
+    ]);
+    const walletAmount = userWallets[0]?.totalWallet || 0;
+
+    // Total redemption points
+    const redeemedPoints = await RedeemHistory.aggregate([
+      { $group: { _id: null, totalRedeemed: { $sum: "$pointsUsed" } } }
+    ]);
+    const redemptionAmount = redeemedPoints[0]?.totalRedeemed || 0;
+
+    res.json({
+      success: true,
+      data: {
+        remainingStock,
+        totalUsers,
+        walletAmount,
+        redemptionAmount
+      }
+    });
+  } catch (err) {
+    console.log("Dashboard Stats Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
+    });
+  }
+});
 
 module.exports = router;
