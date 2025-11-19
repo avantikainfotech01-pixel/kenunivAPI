@@ -423,34 +423,27 @@ router.get("/print-qr/:serial", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-// --- NEWS ROUTES ---
-// Upload news with image, title, description
-// --- NEWS ROUTES ---
-// Upload news with image or video, title, description
-router.post("/news", newsUpload.any(), async (req, res) => {
+router.post("/news", newsUpload.single("media"), async (req, res) => {
   try {
-    console.log("Files received:", req.files);
-    console.log("Body received:", req.body);
+    console.log("File:", req.file);
+    console.log("Body:", req.body);
 
-    if (!req.files || req.files.length === 0) {
+    if (!req.file) {
       return res
         .status(400)
         .json({ success: false, message: "Media file is required" });
     }
 
     const { title, description, mediaType } = req.body;
-    const file = req.files[0]; // first uploaded file
-    const ext = path.extname(file.originalname).toLowerCase();
 
-    // Detect media type if not explicitly sent
+    const ext = path.extname(req.file.originalname).toLowerCase();
     const detectedType = mediaType
       ? mediaType
-      : ext === ".mp4" || ext === ".mov" || ext === ".avi"
+      : [".mp4", ".mov", ".avi"].includes(ext)
       ? "video"
       : "image";
 
-    // Save uploaded file path
-    const mediaPath = `/uploads/news/${file.filename}`;
+    const mediaPath = `/uploads/news/${req.file.filename}`;
 
     const news = new News({
       title,
@@ -478,31 +471,23 @@ router.get("/news", async (req, res) => {
   }
 });
 
-// ✅ Delete a news by ID (deletes associated image file too)
 router.delete("/news/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const newsItem = await News.findById(id);
 
-    if (!newsItem) {
-      return res
-        .status(404)
-        .json({ success: false, message: "News not found" });
-    }
+    if (!newsItem)
+      return res.status(404).json({ success: false, message: "News not found" });
 
-    // ✅ Use correct field name 'image' instead of 'mediaUrl'
-    if (newsItem.image) {
-      const filePath = path.join(__dirname, "..", newsItem.image);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+    if (newsItem.mediaUrl) {
+      const filePath = path.join(__dirname, "..", newsItem.mediaUrl);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
 
     await News.findByIdAndDelete(id);
 
     res.json({ success: true, message: "News deleted successfully" });
   } catch (err) {
-    console.error("Delete error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
