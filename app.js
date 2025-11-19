@@ -12,16 +12,36 @@ const cors = require("cors");
 dotenv.config();
 const app = express();
 
-// ✅ Allow only your frontend domain
-app.use(cors({
-  origin: "*",
-  methods: ["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
-  allowedHeaders: "*",
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: "*",                      // allow all origins
+    methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS",
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "X-Requested-With"
+    ],
+  })
+);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Required for browsers preflight OPTIONS
+app.options("*", cors());
+
+app.use(
+  express.json({
+    limit: "200mb",
+  })
+);
+
+app.use(
+  express.urlencoded({
+    limit: "200mb",
+    extended: true,
+    parameterLimit: 50000,
+  })
+);
+
 
 mongoose
   .connect(process.env.MONGO_URI, {
@@ -31,6 +51,7 @@ mongoose
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error("MongoDB Error:", err));
 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.get("/", (req, res) => {
   res.send("Welcome to the QR Code API");
 });
