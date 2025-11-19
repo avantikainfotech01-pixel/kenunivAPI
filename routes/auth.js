@@ -125,32 +125,35 @@ router.post("/update-address", async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
-// 📌 GET: /admin/location-stats
+// GET /admin/location-stats
 router.get("/location-stats", async (req, res) => {
   try {
-    const data = await User.aggregate([
-      {
-        $group: {
-          _id: "$city",
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { count: -1 } }
-    ]);
+    const users = await User.find({}, "city"); // Only fetch city
 
-    const formatted = data.map((item) => ({
-      location: item._id || "Unknown",
-      count: item.count
-    }));
+    const cityMap = {};
 
-    return res.json({
-      success: true,
-      data: formatted
+    users.forEach((u) => {
+      if (!u.city) return;
+
+      // Normalize city name (case-insensitive)
+      let city = u.city.trim().toLowerCase();
+
+      // Capitalize first letter
+      city = city.charAt(0).toUpperCase() + city.slice(1);
+
+      if (!cityMap[city]) cityMap[city] = 0;
+      cityMap[city]++;
     });
 
+    const result = Object.keys(cityMap).map((key) => ({
+      location: key,
+      count: cityMap[key],
+    }));
+
+    res.json({ success: true, data: result });
   } catch (err) {
-    console.error("Location Stats Error:", err);
-    return res.status(500).json({
+    console.error("Location stats error:", err);
+    res.status(500).json({
       success: false,
       message: "Server error",
     });
