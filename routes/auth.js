@@ -100,6 +100,13 @@ router.post("/login", async (req, res) => {
   );
   res.json({ message: "Login successful", token, user });
 });
+router.get("/get-user", (req, res) => {
+  const userId = req.query.userId;
+  User.find({}).then((users) => {
+    res.json({ users });
+
+  });
+});
 router.post("/update-address", async (req, res) => {
   try {
     const { userId, name, addressLine, city, state, pincode } = req.body;
