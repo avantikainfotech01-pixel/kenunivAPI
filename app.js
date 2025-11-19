@@ -21,8 +21,8 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "100mb" })); // for large video uploads
-app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+app.use(express.json({ limit: "200mb" })); // for large video uploads
+app.use(express.urlencoded({ extended: true, limit: "200mb" }));
 
 mongoose
   .connect(process.env.MONGO_URI, {
