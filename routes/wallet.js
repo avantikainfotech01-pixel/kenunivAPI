@@ -67,12 +67,17 @@ let walletBalance = walletHistory.reduce((sum, tx) => {
     await stock.save();
 
     // --- Deduct points from wallet ---
-    const walletEntry = new Wallet({
-      userId,
-      points: productPoints,
-      type: "debit",
-      description: `Redeemed ${scheme.productName}`,
-    });
+// --- Deduct points from wallet ---
+const walletEntry = new WalletHistory({
+  userId,
+  points: productPoints,
+  type: "debit",
+  balanceAfter: walletBalance - productPoints,
+  description: `Redeemed ${scheme.productName}`,
+  date: new Date(),
+});
+
+await walletEntry.save();
 
     await walletEntry.save();
 
