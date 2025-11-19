@@ -125,5 +125,36 @@ router.post("/update-address", async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
+// 📌 GET: /admin/location-stats
+router.get("/location-stats", async (req, res) => {
+  try {
+    const data = await User.aggregate([
+      {
+        $group: {
+          _id: "$city",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    const formatted = data.map((item) => ({
+      location: item._id || "Unknown",
+      count: item.count
+    }));
+
+    return res.json({
+      success: true,
+      data: formatted
+    });
+
+  } catch (err) {
+    console.error("Location Stats Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
 
 module.exports = router;
