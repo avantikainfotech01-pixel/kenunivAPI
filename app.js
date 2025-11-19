@@ -21,8 +21,6 @@ app.use(
   })
 );
 
-// Required for browsers preflight OPTIONS
-app.options("*", cors());
 app.use(express.json({ limit: "100mb" })); // for large video uploads
 app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
