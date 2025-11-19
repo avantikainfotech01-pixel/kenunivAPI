@@ -30,7 +30,7 @@ const newsStorage = multer.diskStorage({
 
 const newsUpload = multer({
   storage: newsStorage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50 MB
+  limits: { fileSize: 200 * 1024 * 1024 } // 200MB
 });
 
 // Middleware to ensure only admins can access
