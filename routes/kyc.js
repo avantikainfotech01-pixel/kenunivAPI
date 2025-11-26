@@ -33,10 +33,6 @@ router.post(
     try {
       const { documentType, userId } = req.body;
 
-      if (!userId) {
-        return res.status(400).json({ success: false, message: "userId is required" });
-      }
-
       const frontImage = req.files["front"][0].filename;
       const backImage = req.files["back"][0].filename;
 
@@ -49,15 +45,16 @@ router.post(
 
       await kyc.save();
 
-      res.json({
+      res.status(200).json({
         success: true,
-        message: "KYC Uploaded Successfully",
-        data: kyc,
+        message: "Your verification is sent to admin",
+        data: kyc, // send frontImage/backImage here
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
     }
   }
 );
+
 
 module.exports = router;
