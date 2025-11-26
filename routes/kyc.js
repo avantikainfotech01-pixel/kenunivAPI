@@ -3,18 +3,25 @@ const multer = require("multer");
 const path = require("path");
 const KycDocument = require("../models/kycDocument");
 const verifyToken = require("../middleware/auth");
-
+const fs = require('fs');
 const router = express.Router();
 
-// Storage Config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/kyc/");
+    const dir = path.join(__dirname, "..", "uploads", "kyc");
+
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    cb(null, dir);
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
+
 const upload = multer({ storage });
 
 // Upload KYC
