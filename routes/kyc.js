@@ -23,19 +23,19 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-
-// Upload KYC
 router.post(
   "/upload",
-  
   upload.fields([
     { name: "front", maxCount: 1 },
     { name: "back", maxCount: 1 },
   ]),
   async (req, res) => {
     try {
-      const { documentType } = req.body;
-      const userId = req.user.id;
+      const { documentType, userId } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({ success: false, message: "userId is required" });
+      }
 
       const frontImage = req.files["front"][0].filename;
       const backImage = req.files["back"][0].filename;
