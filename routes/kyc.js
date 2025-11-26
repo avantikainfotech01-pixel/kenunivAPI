@@ -20,7 +20,7 @@ const upload = multer({ storage });
 // Upload KYC
 router.post(
   "/upload",
-  verifyToken,
+  
   upload.fields([
     { name: "front", maxCount: 1 },
     { name: "back", maxCount: 1 },
