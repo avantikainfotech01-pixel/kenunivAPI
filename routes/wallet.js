@@ -7,13 +7,126 @@ const WalletHistory = require("../models/wallet_history");
 const Scheme = require("../models/scheme");
 const Stock = require("../models/stock");
 const RedeemHistory = require("../models/redeem_model");
+/**
+ * Helper function to get last wallet balance
+ */
+const getLastBalance = async (userId) => {
+  const lastTx = await WalletHistory.findOne({ userId }).sort({ date: -1 });
+  return lastTx ? lastTx.balanceAfter : 0;
+};
 
-// ✅ Redeem Product API
+// // ✅ Redeem Product API
+// router.post("/redeem", async (req, res) => {
+//   try {
+//     const { userId, schemeId, address, location } = req.body;
+
+//     // --- VALIDATION ---
+//     if (!userId || !schemeId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "userId and schemeId are required",
+//       });
+//     }
+
+//     // --- Fetch User ---
+//     const user = await User.findById(userId);
+//     if (!user)
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+
+//     // --- Fetch Product/Scheme ---
+//     const scheme = await Scheme.findById(schemeId);
+//     if (!scheme)
+//       return res.status(404).json({
+//         success: false,
+//         message: "Scheme not found",
+//       });
+
+//     const productPoints = scheme.points;
+
+//     // --- Calculate Wallet Balance ---
+//     const walletHistory = await Wallet.find({ userId });
+
+//     let walletBalance = walletHistory.reduce((sum, tx) => {
+//       return tx.type === "credit" ? sum + tx.points : sum - tx.points;
+//     }, 0);
+
+//     if (walletBalance < productPoints) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Insufficient balance",
+//       });
+//     }
+
+//     // --- Check stock ---
+//     const stock = await Stock.findOne({ schemeId });
+//     if (!stock || stock.quantity <= 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Stock not available",
+//       });
+//     }
+
+//     // --- Deduct stock ---
+//     stock.quantity -= 1;
+//     await stock.save();
+
+//     // --- Deduct final wallet balance ---
+//     const finalBalance = walletBalance - productPoints;
+
+//     // Update actual user balance also
+//     user.walletBalance = finalBalance;
+//     await user.save();
+
+//     const walletEntry = new WalletHistory({
+//       userId,
+//       points: productPoints,
+//       type: "debit",
+//       balanceAfter: finalBalance,
+//       description: `Redeemed ${scheme.productName}`,
+//       date: new Date(),
+//     });
+
+//     await walletEntry.save();
+
+//     // --- Save redeem history ---
+//     const redeemEntry = new RedeemHistory({
+//       userId,
+//       schemeId,
+//       pointsUsed: productPoints,
+//       address,
+//       location,
+//     });
+
+//     await redeemEntry.save();
+
+//     return res.json({
+//       success: true,
+//       message: "Redeemed successfully",
+//       walletBalance: walletBalance - productPoints,
+//       stockLeft: stock.quantity,
+//       redeem: redeemEntry,
+//     });
+
+//   } catch (err) {
+//     console.log("Redeem Error:", err);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//       error: err.message,
+//     });
+//   }
+// });
+
+// ----------------------------------------------------
+// POST /wallet/redeem (DEBIT TRANSACTION)
+// ----------------------------------------------------
 router.post("/redeem", async (req, res) => {
   try {
     const { userId, schemeId, address, location } = req.body;
 
-    // --- VALIDATION ---
     if (!userId || !schemeId) {
       return res.status(400).json({
         success: false,
@@ -21,70 +134,45 @@ router.post("/redeem", async (req, res) => {
       });
     }
 
-    // --- Fetch User ---
     const user = await User.findById(userId);
     if (!user)
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
 
-    // --- Fetch Product/Scheme ---
     const scheme = await Scheme.findById(schemeId);
     if (!scheme)
-      return res.status(404).json({
-        success: false,
-        message: "Scheme not found",
-      });
+      return res.status(404).json({ success: false, message: "Scheme not found" });
 
     const productPoints = scheme.points;
 
-    // --- Calculate Wallet Balance ---
-const walletHistory = await WalletHistory.find({ userId });
-    
-let walletBalance = walletHistory.reduce((sum, tx) => {
-  return tx.type === "credit" ? sum + tx.points : sum - tx.points;
-}, 0);
-
-    if (walletBalance < productPoints) {
+    const lastBalance = await getLastBalance(userId);
+    if (lastBalance < productPoints) {
       return res.status(400).json({
         success: false,
-        message: "Insufficient balance",
+        message: "Insufficient wallet balance",
       });
     }
 
-    // --- Check stock ---
     const stock = await Stock.findOne({ schemeId });
     if (!stock || stock.quantity <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Stock not available",
-      });
+      return res.status(400).json({ success: false, message: "Stock not available" });
     }
 
-    // --- Deduct stock ---
     stock.quantity -= 1;
     await stock.save();
 
- // --- Deduct final wallet balance ---
-    const finalBalance = walletBalance - productPoints;
-
-    // Update actual user balance also
-    user.walletBalance = finalBalance;
+    const newBalance = lastBalance - productPoints;
+    user.walletBalance = newBalance;
     await user.save();
 
-    const walletEntry = new WalletHistory({
+    await new WalletHistory({
       userId,
       points: productPoints,
       type: "debit",
-      balanceAfter: finalBalance,
+      balanceAfter: newBalance,
       description: `Redeemed ${scheme.productName}`,
       date: new Date(),
-    });
+    }).save();
 
-    await walletEntry.save();
-
-    // --- Save redeem history ---
     const redeemEntry = new RedeemHistory({
       userId,
       schemeId,
@@ -95,24 +183,19 @@ let walletBalance = walletHistory.reduce((sum, tx) => {
 
     await redeemEntry.save();
 
-    return res.json({
+    res.json({
       success: true,
       message: "Redeemed successfully",
-      walletBalance: walletBalance - productPoints,
+      walletBalance: newBalance,
       stockLeft: stock.quantity,
       redeem: redeemEntry,
     });
 
   } catch (err) {
     console.log("Redeem Error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: err.message,
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
 // ------------------------
 // GET /wallet/redeem-history (Admin)
 // ------------------------
@@ -177,115 +260,207 @@ router.patch("/redeem-history/:id/approve", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
 });
+// // ------------------------
+// // POST /wallet/scan
+// // ------------------------
+// router.post("/scan", async (req, res) => {
+//   try {
+//     const { qrText, userId } = req.body;
+//     console.log(userId);
 
-// ------------------------
-// POST /wallet/scan
-// ------------------------
+//     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Invalid userId" });
+//     }
+
+//     const user = await User.findById(userId);
+//     if (!user)
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" });
+
+//     const qr = await QRCode.findOne({ qrText });
+//     if (!qr)
+//       return res.status(404).json({ success: false, message: "QR not found" });
+//     if (!qr.active) return res.json({ success: false, message: "QR inactive" });
+//     if (qr.used)
+//       return res.json({ success: false, message: "QR already used" });
+
+//     // Add points to user wallet
+//     user.walletBalance = (user.walletBalance || 0) + qr.points;
+//     await user.save();
+
+//     // Save wallet history with required fields
+//     const history = new WalletHistory({
+//       userId,
+//       points: qr.points,
+//       type: "credit",
+//       balanceAfter: user.walletBalance,
+//       date: new Date(),
+//     });
+//     await history.save();
+
+//     // Mark QR as used
+//     qr.used = true;
+//     qr.active = false;
+//     await qr.save();
+
+//     // Fetch updated wallet history
+//     const walletHistory = await WalletHistory.find({ userId }).sort({
+//       date: -1,
+//     });
+
+//     res.json({
+//       success: true,
+//       message: `${qr.points} points added to wallet`,
+//       data: { balance: user.walletBalance, history: walletHistory },
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ success: false, message: "Server error" });
+//   }
+// });
+// ----------------------------------------------------
+// POST /wallet/scan (CREDIT TRANSACTION)
+// ----------------------------------------------------
 router.post("/scan", async (req, res) => {
   try {
     const { qrText, userId } = req.body;
-    console.log(userId);
 
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid userId" });
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid userId" });
     }
 
     const user = await User.findById(userId);
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     const qr = await QRCode.findOne({ qrText });
-    if (!qr)
-      return res.status(404).json({ success: false, message: "QR not found" });
+    if (!qr) return res.status(404).json({ success: false, message: "QR not found" });
     if (!qr.active) return res.json({ success: false, message: "QR inactive" });
-    if (qr.used)
-      return res.json({ success: false, message: "QR already used" });
+    if (qr.used) return res.json({ success: false, message: "QR already used" });
 
-    // Add points to user wallet
-    user.walletBalance = (user.walletBalance || 0) + qr.points;
+    const lastBalance = await getLastBalance(userId);
+    const newBalance = lastBalance + qr.points;
+
+    user.walletBalance = newBalance;
     await user.save();
 
-    // Save wallet history with required fields
-    const history = new WalletHistory({
+    await new WalletHistory({
       userId,
       points: qr.points,
       type: "credit",
-      balanceAfter: user.walletBalance,
+      balanceAfter: newBalance,
       date: new Date(),
-    });
-    await history.save();
+      description: `QR Scan +${qr.points} points`
+    }).save();
 
-    // Mark QR as used
     qr.used = true;
     qr.active = false;
     await qr.save();
 
-    // Fetch updated wallet history
-    const walletHistory = await WalletHistory.find({ userId }).sort({
-      date: -1,
-    });
+    const walletHistory = await WalletHistory.find({ userId }).sort({ date: -1 });
 
     res.json({
       success: true,
       message: `${qr.points} points added to wallet`,
-      data: { balance: user.walletBalance, history: walletHistory },
+      data: { balance: newBalance, history: walletHistory },
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// ------------------------
-// POST /wallet/add
-// ------------------------
+// // ------------------------
+// // POST /wallet/add
+// // ------------------------
+// router.post("/add", async (req, res) => {
+//   try {
+//     const { userId, points, description } = req.body;
+
+//     if (!mongoose.Types.ObjectId.isValid(userId)) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Invalid userId" });
+//     }
+
+//     if (!points)
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Points are required" });
+
+//     const user = await User.findById(userId);
+//     if (!user)
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" });
+
+//     user.walletBalance = (user.walletBalance || 0) + points;
+//     await user.save();
+
+//     const history = new WalletHistory({
+//       userId,
+//       points,
+//       type: "credit",
+//       balanceAfter: user.walletBalance,
+//       description,
+//       date: new Date(),
+//     });
+//     await history.save();
+
+//     const walletHistory = await WalletHistory.find({ userId }).sort({
+//       date: -1,
+//     });
+
+//     res.json({
+//       success: true,
+//       message: `${points} points added to wallet`,
+//       data: { balance: user.walletBalance, history: walletHistory },
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ success: false, message: "Server error" });
+//   }
+// });
+// ----------------------------------------------------
+// POST /wallet/add (ADMIN CREDIT)
+// ----------------------------------------------------
 router.post("/add", async (req, res) => {
   try {
     const { userId, points, description } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid userId" });
-    }
-
-    if (!points)
-      return res
-        .status(400)
-        .json({ success: false, message: "Points are required" });
+    if (!mongoose.Types.ObjectId.isValid(userId))
+      return res.status(400).json({ success: false, message: "Invalid userId" });
 
     const user = await User.findById(userId);
     if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
 
-    user.walletBalance = (user.walletBalance || 0) + points;
+    const lastBalance = await getLastBalance(userId);
+    const newBalance = lastBalance + points;
+
+    user.walletBalance = newBalance;
     await user.save();
 
-    const history = new WalletHistory({
+    await new WalletHistory({
       userId,
       points,
       type: "credit",
-      balanceAfter: user.walletBalance,
-      description,
+      balanceAfter: newBalance,
+      description: description || "Added by Admin",
       date: new Date(),
-    });
-    await history.save();
+    }).save();
 
-    const walletHistory = await WalletHistory.find({ userId }).sort({
-      date: -1,
-    });
+    const walletHistory = await WalletHistory.find({ userId }).sort({ date: -1 });
 
     res.json({
       success: true,
       message: `${points} points added to wallet`,
-      data: { balance: user.walletBalance, history: walletHistory },
+      data: { balance: newBalance, history: walletHistory },
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -353,29 +528,59 @@ router.get("/points", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
-// ------------------------
-// GET /wallet/all-history  → For Admin Panel
-// ------------------------
+// // ------------------------
+// // GET /wallet/all-history  → For Admin Panel
+// // ------------------------
+// router.get("/all-history", async (req, res) => {
+//   try {
+//     const allHistory = await WalletHistory.find()
+//       .populate("userId", "name mobile")
+//       .sort({ date: -1 });
+
+//     if (!allHistory.length) {
+//       return res.json({
+//         success: true,
+//         message: "No wallet history found",
+//         data: [],
+//       });
+//     }
+
+//     res.json({
+//       success: true,
+//       data: allHistory.map((item) => ({
+//         _id: item._id,
+//         userName: item.userId?.name || "Unknown User",
+//         userMobile: item.userId?.mobile || "N/A",
+//         points: item.points,
+//         type: item.type,
+//         balanceAfter: item.balanceAfter,
+//         description: item.description || "-",
+//         date: item.date,
+//       })),
+//     });
+//   } catch (err) {
+//     console.error("Error fetching all wallet history:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//     });
+//   }
+// });
+// ----------------------------------------------------
+// GET /wallet/all-history (ADMIN PANEL)
+// ----------------------------------------------------
 router.get("/all-history", async (req, res) => {
   try {
     const allHistory = await WalletHistory.find()
       .populate("userId", "name mobile")
       .sort({ date: -1 });
 
-    if (!allHistory.length) {
-      return res.json({
-        success: true,
-        message: "No wallet history found",
-        data: [],
-      });
-    }
-
     res.json({
       success: true,
       data: allHistory.map((item) => ({
         _id: item._id,
         userName: item.userId?.name || "Unknown User",
-        userMobile: item.userId?.mobile || "N/A",
+        userMobile: item.userId?.mobile || "---",
         points: item.points,
         type: item.type,
         balanceAfter: item.balanceAfter,
@@ -383,12 +588,10 @@ router.get("/all-history", async (req, res) => {
         date: item.date,
       })),
     });
+
   } catch (err) {
     console.error("Error fetching all wallet history:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 router.get("/admin/dashboard-stats", async (req, res) => {
@@ -432,5 +635,4 @@ router.get("/admin/dashboard-stats", async (req, res) => {
     });
   }
 });
-
 module.exports = router;
