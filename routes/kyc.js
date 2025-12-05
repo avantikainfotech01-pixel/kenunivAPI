@@ -55,6 +55,20 @@ router.post(
     }
   }
 );
+router.get("/user/:id", async (req, res) => {
+  try {
+    const kyc = await KycDocument.findOne({ userId: req.params.id })
+      .sort({ createdAt: -1 });
+
+    if (!kyc) {
+      return res.json({ success: true, data: { status: "none" } });
+    }
+
+    res.json({ success: true, data: kyc });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 
 module.exports = router;
