@@ -70,7 +70,7 @@ router.get("/user/:id", async (req, res) => {
   }
 });
 // PUT /kyc/status/:id
-router.put("/status/:id", verifyToken, async (req, res) => {
+router.put("/status/:id", async (req, res) => {
   try {
     const { status } = req.body; // 'approved' | 'rejected'
     const kyc = await KycDocument.findByIdAndUpdate(
