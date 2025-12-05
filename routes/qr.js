@@ -5,6 +5,9 @@ const QRModel = require("../models/qrcode");
 const QrHistory = require("../models/qr_history");
 const router = express.Router();
 const crypto = require("crypto");
+const PDFDocument = require("pdfkit");   // install: npm i pdfkit
+const fs = require("fs");
+const path = require("path");
 
 // Helper to generate unique code
 function generateUniqueCode(serial) {
@@ -272,6 +275,53 @@ router.get("/qr-stats", async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to retrieve QR stats", details: err.message });
+  }
+});
+router.get("/qr-history/pdf/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const history = await QrHistory.findById(id);
+    if (!history) {
+      return res.status(404).json({ error: "QR history not found" });
+    }
+
+    // Create PDF
+    const doc = new PDFDocument();
+    const fileName = `qr_history_${history._id}.pdf`;
+    const filePath = path.join(__dirname, "../downloads", fileName);
+
+    // Ensure folder exists
+    if (!fs.existsSync(path.dirname(filePath))) {
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    }
+
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    // PDF Content
+    doc.fontSize(20).text("QR Generation History", { underline: true });
+    doc.moveDown();
+
+    doc.fontSize(14).text(`Start Serial: ${history.startSerial}`);
+    doc.text(`End Serial: ${history.endSerial}`);
+    doc.text(`Points : ${history.points}`);
+    doc.text(`Generated On: ${history.createdAt}`);
+    doc.moveDown();
+
+    doc.text("Thank you!", { align: "right" });
+
+    doc.end();
+
+    stream.on("finish", () => {
+      res.download(filePath, fileName, () => {
+        fs.unlinkSync(filePath); // delete temp file
+      });
+    });
+
+  } catch (err) {
+    console.error("PDF Error:", err);
+    res.status(500).json({ error: "Failed to generate PDF" });
   }
 });
 
