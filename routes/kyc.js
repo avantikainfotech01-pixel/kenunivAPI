@@ -69,6 +69,20 @@ router.get("/user/:id", async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// PUT /kyc/status/:id
+router.put("/status/:id", verifyToken, async (req, res) => {
+  try {
+    const { status } = req.body; // 'approved' | 'rejected'
+    const kyc = await KycDocument.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    res.json({ success: true, data: kyc });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 
 module.exports = router;
