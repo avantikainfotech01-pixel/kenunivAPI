@@ -329,23 +329,24 @@ router.get("/stocks", async (req, res) => {
   res.json({ stocks });
 });
 
-// --- DELETE SCHEME (WITH CASCADE STOCK DELETE) ---
+// --- DELETE SCHEME WITH STOCK CLEANUP ---
 router.delete("/schemes/:id", async (req, res) => {
   try {
-    const schemeId = req.params.id;
+    const { id } = req.params;
 
-    // 1. Check scheme exists
-    const scheme = await Scheme.findById(schemeId);
+    // 1. Check scheme
+    const scheme = await Scheme.findById(id);
     if (!scheme) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Scheme not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Scheme not found",
+      });
     }
 
-    // 2. Delete related stock
-    await Stock.deleteOne({ schemeId });
+    // 2. Delete related stocks
+    await Stock.deleteMany({ schemeId: id });
 
-    // 3. Delete scheme image from storage (optional but recommended)
+    // 3. Delete scheme image (optional but recommended)
     if (scheme.image) {
       const imagePath = path.join(__dirname, "..", scheme.image);
       if (fs.existsSync(imagePath)) {
@@ -354,15 +355,17 @@ router.delete("/schemes/:id", async (req, res) => {
     }
 
     // 4. Delete scheme
-    await Scheme.findByIdAndDelete(schemeId);
+    await Scheme.findByIdAndDelete(id);
 
     res.json({
       success: true,
-      message: "Scheme and related stock deleted successfully",
+      message: "Scheme and related stocks deleted successfully",
     });
   } catch (err) {
-    console.error("Delete Scheme Error:", err);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 
