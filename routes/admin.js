@@ -329,6 +329,43 @@ router.get("/stocks", async (req, res) => {
   res.json({ stocks });
 });
 
+// --- DELETE SCHEME (WITH CASCADE STOCK DELETE) ---
+router.delete("/schemes/:id", async (req, res) => {
+  try {
+    const schemeId = req.params.id;
+
+    // 1. Check scheme exists
+    const scheme = await Scheme.findById(schemeId);
+    if (!scheme) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Scheme not found" });
+    }
+
+    // 2. Delete related stock
+    await Stock.deleteOne({ schemeId });
+
+    // 3. Delete scheme image from storage (optional but recommended)
+    if (scheme.image) {
+      const imagePath = path.join(__dirname, "..", scheme.image);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    // 4. Delete scheme
+    await Scheme.findByIdAndDelete(schemeId);
+
+    res.json({
+      success: true,
+      message: "Scheme and related stock deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete Scheme Error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Generate QRs and PDF
 router.post("/generate-qrs-pdf", verifyToken, isAdmin, async (req, res) => {
   try {
