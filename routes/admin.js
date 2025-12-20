@@ -284,19 +284,48 @@ router.patch("/schemes/:id/status", async (req, res) => {
 
 // --- STOCKS ---
 // Add Stock
+// Add or Restock
 router.post("/stocks", async (req, res) => {
   try {
     const { itemName, quantity, minQty, schemeId } = req.body;
-    const stock = await Stock.create({ itemName, quantity, minQty, schemeId });
-    res.json({ success: true, stock });
+
+    // 1. Check existing stock for scheme
+    let stock = await Stock.findOne({ schemeId });
+
+    if (stock) {
+      // 2. RESTOCK → update quantity
+      stock.quantity += Number(quantity);
+      stock.minQty = minQty; // update min qty if changed
+      await stock.save();
+
+      return res.json({
+        success: true,
+        message: "Stock updated successfully",
+        stock,
+      });
+    }
+
+    // 3. FIRST TIME → create stock
+    stock = await Stock.create({
+      itemName,
+      quantity,
+      minQty,
+      schemeId,
+    });
+
+    res.json({
+      success: true,
+      message: "Stock added successfully",
+      stock,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // List Stocks
 router.get("/stocks", async (req, res) => {
-  const stocks = await Stock.find({}).populate("schemeId", "name");
+  const stocks = await Stock.find({}).populate("schemeId");
   res.json({ stocks });
 });
 
