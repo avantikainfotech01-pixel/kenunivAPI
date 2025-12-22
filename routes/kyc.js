@@ -83,6 +83,11 @@ router.put("/status/:id", async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// GET ALL KYC (ADMIN)
+router.get("/admin/kyc", async (req, res) => {
+  const list = await KycDocument.find().sort({ createdAt: -1 });
+  res.json({ success: true, data: list });
+});
 
 
 module.exports = router;
