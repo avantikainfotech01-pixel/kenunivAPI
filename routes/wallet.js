@@ -615,18 +615,17 @@ router.get("/wallet/admin/dashboard-stats", async (req, res) => {
     const remainingStock =
       stockData.length > 0 ? stockData[0].totalStock : 0;
 
-    // SUM of all user wallet balances
-    const walletData = await User.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalWallet: { $sum: "$walletAmount" }   // <- make sure name matches schema
-        }
-      }
-    ]);
+  const walletData = await User.aggregate([
+  {
+    $group: {
+      _id: null,
+      totalWallet: { $sum: "$walletBalance" }
+    }
+  }
+]);
 
-    const walletAmount =
-      walletData.length > 0 ? walletData[0].totalWallet : 0;
+const walletAmount =
+  walletData.length > 0 ? walletData[0].totalWallet : 0;
 
     // Total redemption point or amount
     const redeemData = await RedeemHistory.aggregate([
