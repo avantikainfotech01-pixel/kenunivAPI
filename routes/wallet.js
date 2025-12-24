@@ -599,7 +599,7 @@ router.get("/wallet/admin/dashboard-stats", async (req, res) => {
 
     // Only contractor count (if needed change role value)
     const totalUsers = await User.countDocuments({
-      role: "contractor"
+      role: "user"
     });
 
     // Remaining stock based on current Stock collection only
@@ -615,17 +615,23 @@ router.get("/wallet/admin/dashboard-stats", async (req, res) => {
     const remainingStock =
       stockData.length > 0 ? stockData[0].totalStock : 0;
 
-  const walletData = await User.aggregate([
-  {
-    $group: {
-      _id: null,
-      totalWallet: { $sum: "$walletBalance" }
-    }
-  }
-]);
-
-const walletAmount =
-  walletData.length > 0 ? walletData[0].totalWallet : 0;
+ const walletData = await WalletHistory.aggregate([
+      { $sort: { date: -1 } },
+      {
+        $group: {
+          _id: "$userId",
+          lastBalance: { $first: "$balanceAfter" }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalWallet: { $sum: "$lastBalance" }
+        }
+      }
+    ]);
+    const walletAmount =
+      walletData.length > 0 ? walletData[0].totalWallet : 0;
 
     // Total redemption point or amount
     const redeemData = await RedeemHistory.aggregate([
