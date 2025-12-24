@@ -594,30 +594,54 @@ router.get("/all-history", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
-router.get("/admin/dashboard-stats", async (req, res) => {
+router.get("/wallet/admin/dashboard-stats", async (req, res) => {
   try {
-    // Total users
-    const totalUsers = await User.countDocuments();
 
-    // Remaining stock
+    // Only contractor count (if needed change role value)
+    const totalUsers = await User.countDocuments({
+      role: "contractor"
+    });
+
+    // Remaining stock based on current Stock collection only
     const stockData = await Stock.aggregate([
-      { $group: { _id: null, totalStock: { $sum: "$quantity" } } }
+      {
+        $group: {
+          _id: null,
+          totalStock: { $sum: "$quantity" }
+        }
+      }
     ]);
-    const remainingStock = stockData[0]?.totalStock || 0;
 
-    // Wallet total amount
-    const userWallets = await User.aggregate([
-      { $group: { _id: null, totalWallet: { $sum: "$walletBalance" } } }
+    const remainingStock =
+      stockData.length > 0 ? stockData[0].totalStock : 0;
+
+    // SUM of all user wallet balances
+    const walletData = await User.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalWallet: { $sum: "$walletAmount" }   // <- make sure name matches schema
+        }
+      }
     ]);
-    const walletAmount = userWallets[0]?.totalWallet || 0;
 
-    // Total redemption points
-    const redeemedPoints = await RedeemHistory.aggregate([
-      { $group: { _id: null, totalRedeemed: { $sum: "$pointsUsed" } } }
+    const walletAmount =
+      walletData.length > 0 ? walletData[0].totalWallet : 0;
+
+    // Total redemption point or amount
+    const redeemData = await RedeemHistory.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRedeemed: { $sum: "$pointsUsed" }
+        }
+      }
     ]);
-    const redemptionAmount = redeemedPoints[0]?.totalRedeemed || 0;
 
-    res.json({
+    const redemptionAmount =
+      redeemData.length > 0 ? redeemData[0].totalRedeemed : 0;
+
+    return res.json({
       success: true,
       data: {
         remainingStock,
@@ -627,11 +651,11 @@ router.get("/admin/dashboard-stats", async (req, res) => {
       }
     });
   } catch (err) {
-    console.log("Dashboard Stats Error:", err);
-    res.status(500).json({
+    console.error("Dashboard Stats Error:", err);
+    return res.status(500).json({
       success: false,
       message: "Server error",
-      error: err.message,
+      error: err.message
     });
   }
 });
