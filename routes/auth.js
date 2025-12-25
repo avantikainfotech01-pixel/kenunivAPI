@@ -166,5 +166,36 @@ router.get("/location-stats", async (req, res) => {
     });
   }
 });
+// Get only real mobile app users (applicator list)
+router.get("/app-users", async (req, res) => {
+  try {
+    const roles = ["user", "contractor", "customer"];
+
+    const users = await User.find(
+      { role: { $in: roles } },
+      {
+        name: 1,
+        mobile: 1,
+        address: 1,
+        city: 1,
+        state: 1,
+        role: 1,
+        createdAt: 1,
+      }
+    ).sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      count: users.length,
+      data: users,
+    });
+  } catch (err) {
+    console.error("App users fetch error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
 
 module.exports = router;
