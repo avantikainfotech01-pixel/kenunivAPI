@@ -83,11 +83,31 @@ router.put("/status/:id", async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-// GET ALL KYC (ADMIN)
+// GET UNIQUE LATEST KYC PER USER (ADMIN)
 router.get("/admin/kyc", async (req, res) => {
-  const list = await KycDocument.find().sort({ createdAt: -1 });
-  res.json({ success: true, data: list });
-});
+  try {
+    const list = await KycDocument.aggregate([
+      { $sort: { createdAt: -1 } }, // latest first
+      {
+        $group: {
+          _id: "$userId",
+          latest: { $first: "$$ROOT" }
+        }
+      },
+      { $replaceRoot: { newRoot: "$latest" } },
+      { $sort: { createdAt: -1 } }
+    ]);
 
+    res.json({
+      success: true,
+      data: list
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
 
 module.exports = router;
