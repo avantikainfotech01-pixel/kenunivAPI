@@ -31,7 +31,7 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const { documentType, userId } = req.body;
+      const { documentType, userId, name, mobile, address } = req.body;
 
       const frontImage = req.files["front"][0].filename;
       const backImage = req.files["back"][0].filename;
@@ -39,6 +39,9 @@ router.post(
       const kyc = new KycDocument({
         userId,
         documentType,
+        name,
+        mobile,
+        address,
         frontImage,
         backImage,
       });
@@ -48,7 +51,7 @@ router.post(
       res.status(200).json({
         success: true,
         message: "Your verification is sent to admin",
-        data: kyc, // send frontImage/backImage here
+        data: kyc,
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
