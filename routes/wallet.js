@@ -260,6 +260,156 @@ router.patch("/redeem-history/:id/approve", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
 });
+// ------------------------
+// PATCH /wallet/redeem-history/:id/dispatch → Dispatch product
+// ------------------------
+router.patch("/redeem-history/:id/dispatch", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { courierName, trackingId, adminRemark } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid redeem ID" });
+    }
+
+    const redeemEntry = await RedeemHistory.findById(id);
+    if (!redeemEntry) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Redeem entry not found" });
+    }
+
+    redeemEntry.status = "dispatched";
+    redeemEntry.courierName = courierName || null;
+    redeemEntry.trackingId = trackingId || null;
+    redeemEntry.adminRemark = adminRemark || null;
+    redeemEntry.dispatchDate = new Date();
+
+    await redeemEntry.save();
+
+    res.json({
+      success: true,
+      message: "Order dispatched",
+      data: redeemEntry,
+    });
+  } catch (err) {
+    console.error("Dispatch error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+
+// ------------------------
+// PATCH /wallet/redeem-history/:id/delivered → Mark delivered
+// ------------------------
+router.patch("/redeem-history/:id/delivered", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid redeem ID" });
+    }
+
+    const redeemEntry = await RedeemHistory.findById(id);
+    if (!redeemEntry) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Redeem entry not found" });
+    }
+
+    redeemEntry.status = "completed";
+    redeemEntry.deliveryDate = new Date();
+
+    await redeemEntry.save();
+
+    res.json({
+      success: true,
+      message: "Order delivered successfully",
+      data: redeemEntry,
+    });
+  } catch (err) {
+    console.error("Delivered error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+
+// ------------------------
+// PATCH /wallet/redeem-history/:id/cancel → Cancel Redemption
+// ------------------------
+router.patch("/redeem-history/:id/cancel", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminRemark } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid redeem ID" });
+    }
+
+    const redeemEntry = await RedeemHistory.findById(id);
+    if (!redeemEntry) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Redeem entry not found" });
+    }
+
+    redeemEntry.status = "rejected";
+    redeemEntry.adminRemark = adminRemark || null;
+
+    await redeemEntry.save();
+
+    res.json({
+      success: true,
+      message: "Redemption request cancelled",
+      data: redeemEntry,
+    });
+  } catch (err) {
+    console.error("Cancel error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+
+// ------------------------
+// PATCH /wallet/redeem-history/:id/packed → Mark as packed
+// ------------------------
+router.patch("/redeem-history/:id/packed", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid redeem ID" });
+    }
+
+    const redeemEntry = await RedeemHistory.findById(id);
+    if (!redeemEntry) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Redeem entry not found" });
+    }
+
+    redeemEntry.status = "approved";
+
+    await redeemEntry.save();
+
+    res.json({
+      success: true,
+      message: "Order marked as packed",
+      data: redeemEntry,
+    });
+  } catch (err) {
+    console.error("Packed error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 // // ------------------------
 // // POST /wallet/scan
 // // ------------------------
