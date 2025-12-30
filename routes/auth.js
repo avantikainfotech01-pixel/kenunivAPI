@@ -197,5 +197,45 @@ router.get("/app-users", async (req, res) => {
     });
   }
 });
+router.get("/profile", async (req, res) => {
+  try {
+    const { userId } = req.query;
 
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid userId",
+      });
+    }
+
+    const user = await User.findById(userId).select(
+      "name mobile address city state pincode role createdAt"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      user,
+    });
+  } catch (err) {
+    console.error("Profile fetch error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
 module.exports = router;
