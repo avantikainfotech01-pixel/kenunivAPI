@@ -34,11 +34,20 @@ const redeemHistorySchema = new mongoose.Schema(
       lat: Number,
       lng: Number,
     },
-    status: {
-      type: String,
-      enum: ["pending", "approved", "rejected", "dispatched", "completed"],
-      default: "pending",
-    },
+ status: {
+  type: String,
+  enum: [
+    "pending",           // redeem request created
+    "kyc_pending",       // waiting for KYC decision
+    "kyc_rejected",      // KYC rejected
+    "approved",          // admin approved for dispatch
+    "packed",            // item packed
+    "dispatched",        // handed to courier
+    "delivered",         // user received
+    "cancelled"          // cancelled for any reason
+  ],
+  default: "pending",
+},
     createdAt: {
       type: Date,
       default: Date.now,
