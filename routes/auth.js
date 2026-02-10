@@ -238,4 +238,44 @@ router.get("/profile", async (req, res) => {
     });
   }
 });
+// DELETE /api/user/delete
+// Protect this route with verifyToken to ensure only the logged-in user can delete their own account
+router.delete("/delete", async (req, res) => {
+  try {
+    // req.user.id is populated by your verifyToken middleware
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid user ID" 
+      });
+    }
+
+    // Permanently remove the user from the database
+    const user = await User.findByIdAndDelete(userId);
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // NOTE: If you have other collections like Wallet, KYC, or Transactions, 
+    // you must delete them here as well to fully comply with Apple's data removal policy.
+    // Example: await Wallet.deleteMany({ userId: userId });
+
+    return res.json({ 
+      success: true, 
+      message: "Account and all associated data have been permanently deleted." 
+    });
+  } catch (err) {
+    console.error("Account deletion error:", err);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error during account deletion" 
+    });
+  }
+});
 module.exports = router;
