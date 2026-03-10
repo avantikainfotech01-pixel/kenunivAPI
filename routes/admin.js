@@ -368,6 +368,30 @@ router.delete("/schemes/:id", async (req, res) => {
     });
   }
 });
+router.put("/stocks/:id", verifyToken, isAdmin, async (req, res) => {
+  try {
+    const { itemName, quantity, minQty } = req.body;
+    const stock = await Stock.findByIdAndUpdate(
+      req.params.id,
+      { itemName, quantity, minQty },
+      { new: true }
+    );
+    if (!stock) return res.status(404).json({ success: false, message: "Stock not found" });
+    res.json({ success: true, stock });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- Delete Stock ---
+router.delete("/stocks/:id", verifyToken, isAdmin, async (req, res) => {
+  try {
+    await Stock.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Stock deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // Generate QRs and PDF
 router.post("/generate-qrs-pdf", verifyToken, isAdmin, async (req, res) => {
