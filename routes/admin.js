@@ -368,7 +368,9 @@ router.delete("/schemes/:id", async (req, res) => {
     });
   }
 });
-router.put("/stocks/:id", verifyToken, isAdmin, async (req, res) => {
+// --- Edit Stock ---
+// REMOVED verifyToken and isAdmin
+router.put("/stocks/:id", async (req, res) => {
   try {
     const { itemName, quantity, minQty } = req.body;
     const stock = await Stock.findByIdAndUpdate(
@@ -384,7 +386,8 @@ router.put("/stocks/:id", verifyToken, isAdmin, async (req, res) => {
 });
 
 // --- Delete Stock ---
-router.delete("/stocks/:id", verifyToken, isAdmin, async (req, res) => {
+// REMOVED verifyToken and isAdmin
+router.delete("/stocks/:id", async (req, res) => {
   try {
     await Stock.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: "Stock deleted successfully" });
