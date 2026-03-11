@@ -33,7 +33,7 @@ router.post("/generate-qrs", async (req, res) => {
   ) {
     const uniqueCode = generateUniqueCode(serial);
 
-    const qrText = `serial=${serial}|points=${points}|code=${uniqueCode}`;
+   const qrText = `http://api.kenuniv.com/redeem?serial=${serial}&points=${points}&code=${uniqueCode}`;
     const qrImage = await QRCode.toDataURL(qrText);
 
     await QRModel.create({
