@@ -7,6 +7,7 @@ const adminRoutes = require("./routes/admin");
 const walletRoutes = require("./routes/wallet");
 const kycRoutes = require("./routes/kyc");
 const pointRoutes = require("./routes/point");
+const redirectRoutes = require('./routes/redirect_routes');
 const path = require("path");
 const cors = require("cors");
 dotenv.config();
@@ -37,6 +38,7 @@ app.get("/", (req, res) => {
   res.send("Welcome to the QR Code API");
 });
 app.use("/api", qrRoutes);
+app.use('/', redirectRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api", authRoutes);
 app.use("/api/admin", adminRoutes);
