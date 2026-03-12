@@ -68,6 +68,38 @@ router.get("/qr-history", async (req, res) => {
       .json({ error: "Failed to fetch history", details: err.message });
   }
 });
+// GET /api/qrs-by-range (NEW ROUTE FOR HISTORY PDF GENERATION)
+router.get("/qrs-by-range", async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    
+    if (!start || !end) {
+      return res.status(400).json({ error: "Start and end serials are required" });
+    }
+
+    // Find all QR codes in this serial range
+    const qrs = await QRModel.find({
+      serial: { $gte: parseInt(start), $lte: parseInt(end) }
+    }).sort({ serial: 1 });
+
+    // Re-generate the QR Image for the PDF
+    const qrData = await Promise.all(
+      qrs.map(async (qr) => {
+        const qrImage = await QRCode.toDataURL(qr.qrText);
+        return {
+          serial: qr.serial,
+          points: qr.points,
+          uniqueCode: qr.uniqueCode,
+          qrImage: qrImage
+        };
+      })
+    );
+
+    res.json({ qrs: qrData });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch QRs by range", details: err.message });
+  }
+});
 
 // POST /api/activate-qr
 router.post("/activate-qr", async (req, res) => {
