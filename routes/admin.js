@@ -40,7 +40,7 @@ function isAdmin(req, res, next) {
 }
 
 // --- USER MASTER (For Admin Panel Only) ---
-// Add or Update User (Admin only)
+
 // --- USER MASTER (For Admin Panel Only) ---
 router.post("/user-master", async (req, res) => {
   try {
@@ -122,6 +122,55 @@ router.post("/user-master", async (req, res) => {
       success: false,
       message: "Internal server error",
       error: err.message,
+    });
+  }
+});
+router.post("/setup-superadmin", async (req, res) => {
+  try {
+    const mobile = "9898011551";
+    
+    // 1. Check if it already exists so we don't make duplicates
+    const existingUser = await User.findOne({ mobile });
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Super Admin already exists!" 
+      });
+    }
+
+    // 2. Hash the password
+    const hash = await bcrypt.hash("Ruchir_1551", 10);
+
+    // 3. Create the user with full permissions
+    const superAdmin = new User({
+      name: "Super Admin ruchir",
+      mobile: mobile,
+      address: "Admin Office",
+      password: hash,
+      active: true,
+      role: "admin",
+      permissions: {
+        qr: true,
+        scheme: true,
+        stock: true,
+        user: true
+      }
+    });
+
+    await superAdmin.save();
+
+    res.json({ 
+      success: true, 
+      message: "Super Admin created successfully!", 
+      user: superAdmin 
+    });
+    
+  } catch (err) {
+    console.error("Setup Error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error", 
+      error: err.message 
     });
   }
 });
