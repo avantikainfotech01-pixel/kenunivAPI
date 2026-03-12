@@ -125,48 +125,44 @@ router.post("/user-master", async (req, res) => {
     });
   }
 });
-router.post("/setup-superadmin", async (req, res) => {
+router.post("/fix-superadmin", async (req, res) => {
   try {
     const mobile = "9898011551";
     
-    // 1. Check if it already exists so we don't make duplicates
-    const existingUser = await User.findOne({ mobile });
-    if (existingUser) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Super Admin already exists!" 
-      });
+    // Find the user we just created and force ALL permissions to true
+    const updatedUser = await User.findOneAndUpdate(
+      { mobile: mobile },
+      { 
+        $set: {
+          permissions: {
+            qr: true,
+            stock: true,
+            scheme: true,
+            point: true,
+            news: true,
+            userMaster: true,
+            contractor: true,
+            wallet: true,
+            reports: true,
+            dashboard: true
+          }
+        }
+      },
+      { new: true } // This returns the updated user data
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: "Super Admin not found!" });
     }
-
-    // 2. Hash the password
-    const hash = await bcrypt.hash("Ruchir_1551", 10);
-
-    // 3. Create the user with full permissions
-    const superAdmin = new User({
-      name: "Super Admin ruchir",
-      mobile: mobile,
-      address: "Admin Office",
-      password: hash,
-      active: true,
-      role: "admin",
-      permissions: {
-        qr: true,
-        scheme: true,
-        stock: true,
-        user: true
-      }
-    });
-
-    await superAdmin.save();
 
     res.json({ 
       success: true, 
-      message: "Super Admin created successfully!", 
-      user: superAdmin 
+      message: "All permissions set to TRUE successfully!", 
+      user: updatedUser 
     });
     
   } catch (err) {
-    console.error("Setup Error:", err);
+    console.error("Fix Error:", err);
     res.status(500).json({ 
       success: false, 
       message: "Internal server error", 
