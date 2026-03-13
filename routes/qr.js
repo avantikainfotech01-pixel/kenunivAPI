@@ -24,16 +24,27 @@ router.post("/generate-qrs", async (req, res) => {
     return res.status(400).json({ error: "All fields are required" });
   }
 
+  const start = parseInt(serialFrom);
+  const end = parseInt(serialTo);
+
+  // 🔴 NEW FIX: Prevent duplicate serial numbers!
+  // This checks if ANY serial in this range already exists in the database.
+  const existingQr = await QRModel.findOne({
+    serial: { $gte: start, $lte: end }
+  });
+
+  if (existingQr) {
+    return res.status(400).json({ 
+      error: `Serial number ${existingQr.serial} already exists! Please use a higher Start No.` 
+    });
+  }
+
   const qrList = [];
 
-  for (
-    let serial = parseInt(serialFrom);
-    serial <= parseInt(serialTo);
-    serial++
-  ) {
+  for (let serial = start; serial <= end; serial++) {
     const uniqueCode = generateUniqueCode(serial);
 
-   const qrText = `http://api.kenuniv.com/redeem?serial=${serial}&points=${points}&code=${uniqueCode}`;
+    const qrText = `http://api.kenuniv.com/redeem?serial=${serial}&points=${points}&code=${uniqueCode}`;
     const qrImage = await QRCode.toDataURL(qrText);
 
     await QRModel.create({
@@ -49,8 +60,8 @@ router.post("/generate-qrs", async (req, res) => {
   }
 
   await QrHistory.create({
-    startSerial: parseInt(serialFrom),
-    endSerial: parseInt(serialTo),
+    startSerial: start,
+    endSerial: end,
     points,
   });
 
