@@ -8,7 +8,8 @@ const userSchema = new mongoose.Schema({
   address: String,
   state: String,
   city: String,
-  pincode: String,   
+  pincode: String,
+  walletBalance: { type: Number, default: 0 },
   role: { type: String, enum: ["admin", "user"], default: "user" },
   createdAt: { type: Date, default: Date.now },
 });

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const WalletHistory = require("../models/wallet_history");
 const bcrypt = require("bcryptjs");
 const verifyToken = require("../middleware/auth");
 const crypto = require("crypto");
@@ -180,14 +181,38 @@ router.get("/app-users", async (req, res) => {
         city: 1,
         state: 1,
         role: 1,
+        walletBalance: 1,
         createdAt: 1,
       }
     ).sort({ createdAt: -1 });
 
+    const userIds = users.map((user) => user._id);
+    const latestBalances = await WalletHistory.aggregate([
+      { $match: { userId: { $in: userIds } } },
+      { $sort: { date: -1, _id: -1 } },
+      {
+        $group: {
+          _id: "$userId",
+          walletBalance: { $first: "$balanceAfter" },
+        },
+      },
+    ]);
+    const balanceByUser = new Map(
+      latestBalances.map((entry) => [
+        entry._id.toString(),
+        Number(entry.walletBalance) || 0,
+      ])
+    );
+    const appUsers = users.map((user) => ({
+      ...user.toObject(),
+      walletBalance:
+        balanceByUser.get(user._id.toString()) ?? user.walletBalance ?? 0,
+    }));
+
     return res.json({
       success: true,
-      count: users.length,
-      data: users,
+      count: appUsers.length,
+      data: appUsers,
     });
   } catch (err) {
     console.error("App users fetch error:", err);

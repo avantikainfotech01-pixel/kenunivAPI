@@ -46,4 +46,17 @@ app.use("/api/wallet", walletRoutes);
 app.use("/api/kyc", kycRoutes);
 app.use("/api/point", pointRoutes);
 
+// Always return JSON for upload/validation middleware errors so Flutter can
+// display a useful message instead of receiving Express's HTML error page.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  console.error("Request error:", err);
+  const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+  const message =
+    err.code === "LIMIT_FILE_SIZE"
+      ? "Each image must be smaller than 10 MB"
+      : err.message || "Invalid request";
+  return res.status(status).json({ success: false, message });
+});
+
 app.listen(3000, "0.0.0.0", () => console.log("Server running on port 3000"));

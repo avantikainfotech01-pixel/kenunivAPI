@@ -669,9 +669,15 @@ router.get("/points", async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
 
+    const walletBalance = await getLastBalance(userId);
+    if (user.walletBalance !== walletBalance) {
+      user.walletBalance = walletBalance;
+      await user.save();
+    }
+
     res.json({
       success: true,
-      data: { walletBalance: user.walletBalance || 0 },
+      data: { walletBalance },
     });
   } catch (err) {
     console.error(err);
